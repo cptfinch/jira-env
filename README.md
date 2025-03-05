@@ -13,6 +13,7 @@ A command-line tool for interacting with Jira's REST API, providing easy access 
 - [Installation](#installation)
   - [Standard Installation](#standard-installation)
   - [Using with Nix](#using-with-nix)
+  - [Using as a Home Manager Module](#using-as-a-home-manager-module)
 - [Configuration](#configuration)
 - [Usage](#usage)
   - [Basic Usage](#basic-usage)
@@ -91,6 +92,71 @@ nix develop
 ```
 
 This will create an environment with Python and all required dependencies.
+
+### Using as a Home Manager Module
+
+If you're using [Home Manager](https://github.com/nix-community/home-manager), you can add this tool to your configuration:
+
+#### Using Flakes
+
+Add the following to your Home Manager flake:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager.url = "github:nix-community/home-manager";
+    jira-interface.url = "github:cptfinch/jira-env";
+  };
+
+  outputs = { nixpkgs, home-manager, jira-interface, ... }: {
+    homeConfigurations."yourusername" = home-manager.lib.homeManagerConfiguration {
+      # ...your existing configuration...
+      
+      modules = [
+        jira-interface.homeManagerModule
+        
+        # Your configuration
+        {
+          programs.jira-interface = {
+            enable = true;
+            baseUrl = "https://your-jira-instance.atlassian.net";
+            # Either set the API token here (not recommended for security)
+            # apiToken = "your-api-token";
+            
+            # Or set useApiTokenFromEnv = true and export JIRA_API_TOKEN in your shell
+            useApiTokenFromEnv = true;
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+#### Without Flakes
+
+If you're not using flakes, you can still use the package by adding it to your configuration:
+
+```nix
+{ config, pkgs, ... }:
+
+let
+  jira-interface = import (builtins.fetchGit {
+    url = "https://github.com/cptfinch/jira-env.git";
+    ref = "main";
+  }) { inherit pkgs; };
+in
+{
+  home.packages = [ jira-interface ];
+  
+  # Set up environment variables
+  home.sessionVariables = {
+    JIRA_BASE_URL = "https://your-jira-instance.atlassian.net";
+    # You'll need to set JIRA_API_TOKEN in your shell
+  };
+}
+```
 
 ## Configuration
 
