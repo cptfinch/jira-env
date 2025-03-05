@@ -1,6 +1,8 @@
 import requests
 import json
 import argparse
+import os
+import sys
 
 # Jira API configuration
 JIRA_BASE_URL = "https://your-jira-instance.atlassian.net"
@@ -490,13 +492,277 @@ def display_created_issue(issue_data):
     print("-" * 80)
     print(f"View issue: {JIRA_BASE_URL}/browse/{issue_data['key']}")
 
+def search_issues_structured(jql_query, max_results=50, output_format="text"):
+    """Search for issues and return in the specified format"""
+    issues_data = search_issues(jql_query, max_results)
+    
+    if not issues_data or "issues" not in issues_data:
+        return None
+    
+    if output_format == "json":
+        return issues_data
+    elif output_format == "simplified_json":
+        # Create a simplified structure optimized for LLM processing
+        simplified_issues = []
+        for issue in issues_data["issues"]:
+            simplified_issue = {
+                "key": issue["key"],
+                "summary": issue["fields"]["summary"],
+                "description": issue["fields"].get("description", ""),
+                "status": issue["fields"]["status"]["name"],
+                "issue_type": issue["fields"]["issuetype"]["name"],
+                "priority": issue["fields"].get("priority", {}).get("name", "No priority"),
+                "created": issue["fields"]["created"],
+                "updated": issue["fields"]["updated"],
+                "assignee": issue["fields"].get("assignee", {}).get("displayName", "Unassigned"),
+                "reporter": issue["fields"].get("reporter", {}).get("displayName", "Unknown"),
+                "components": [c["name"] for c in issue["fields"].get("components", [])],
+                "labels": issue["fields"].get("labels", []),
+                "comments": [
+                    {
+                        "author": c["author"]["displayName"],
+                        "body": c["body"],
+                        "created": c["created"]
+                    } for c in issue["fields"].get("comment", {}).get("comments", [])
+                ]
+            }
+            simplified_issues.append(simplified_issue)
+        return {"issues": simplified_issues, "total": issues_data["total"]}
+    else:  # text format
+        display_issues(issues_data)
+        return None
+
+def interactive_issue_selector(issues):
+    """Present an interactive selector for issues"""
+    try:
+        import inquirer
+    except ImportError:
+        print("Please install the 'inquirer' package: pip install inquirer")
+        return None
+    
+    if not issues or "issues" not in issues or not issues["issues"]:
+        print("No issues to select from")
+        return None
+    
+    choices = [
+        f"{issue['key']} - {issue['issue_type']} - {issue['summary'][:50]}..." 
+        for issue in issues["issues"]
+    ]
+    
+    questions = [
+        inquirer.List('issue',
+                      message="Select an issue to analyze",
+                      choices=choices,
+                     )
+    ]
+    
+    answers = inquirer.prompt(questions)
+    if not answers:
+        return None
+    
+    selected_key = answers['issue'].split(' - ')[0]
+    for issue in issues["issues"]:
+        if issue["key"] == selected_key:
+            return issue
+    
+    return None
+
+def analyze_issue_with_rag(issue, past_issues_db_path="past_issues.json"):
+    """Analyze an issue using RAG to find similar past issues and suggest solutions"""
+    try:
+        import openai
+        import json
+        from sentence_transformers import SentenceTransformer
+        import numpy as np
+        from scipy.spatial.distance import cosine
+    except ImportError:
+        print("Please install required packages: pip install openai sentence-transformers numpy scipy")
+        return None
+    
+    # Load past issues
+    try:
+        with open(past_issues_db_path, 'r') as f:
+            past_issues = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        past_issues = {"issues": []}
+    
+    # Create embeddings for the current issue
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    current_text = f"{issue['summary']} {issue['description']}"
+    current_embedding = model.encode(current_text)
+    
+    # Find similar issues
+    similar_issues = []
+    for past_issue in past_issues["issues"]:
+        past_text = f"{past_issue['summary']} {past_issue['description']}"
+        past_embedding = np.array(past_issue.get('embedding', model.encode(past_text)))
+        
+        # Calculate similarity
+        similarity = 1 - cosine(current_embedding, past_embedding)
+        if similarity > 0.7:  # Threshold for similarity
+            similar_issues.append({
+                "issue": past_issue,
+                "similarity": similarity,
+                "resolution": past_issue.get("resolution", "")
+            })
+    
+    # Sort by similarity
+    similar_issues.sort(key=lambda x: x["similarity"], reverse=True)
+    
+    # Use LLM to analyze and suggest solutions
+    prompt = f"""
+    I'm working on this Jira issue:
+    
+    Key: {issue['key']}
+    Type: {issue['issue_type']}
+    Summary: {issue['summary']}
+    Description: {issue['description']}
+    Status: {issue['status']}
+    Priority: {issue['priority']}
+    
+    """
+    
+    if similar_issues:
+        prompt += "Here are similar issues that were resolved in the past:\n\n"
+        for i, similar in enumerate(similar_issues[:3]):  # Top 3 similar issues
+            prompt += f"Similar Issue {i+1} (Similarity: {similar['similarity']:.2f}):\n"
+            prompt += f"Key: {similar['issue']['key']}\n"
+            prompt += f"Summary: {similar['issue']['summary']}\n"
+            prompt += f"Resolution: {similar['resolution']}\n\n"
+    
+    prompt += "Based on this information, please analyze this issue and suggest how to approach it. If there are similar past issues, explain how their resolutions might apply to this case."
+    
+    # Call OpenAI API
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are an expert software developer and project manager who helps analyze and solve Jira issues."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    
+    analysis = response.choices[0].message.content
+    
+    return {
+        "issue": issue,
+        "similar_issues": similar_issues[:3] if similar_issues else [],
+        "analysis": analysis
+    }
+
+def jira_rag_workflow(jql_query="assignee = currentUser() AND statusCategory != Done", max_results=20):
+    """Complete workflow for Jira issue analysis with RAG"""
+    # Fetch issues
+    print(f"Fetching issues with query: {jql_query}")
+    issues = search_issues_structured(jql_query, max_results, "simplified_json")
+    
+    if not issues or not issues.get("issues"):
+        print("No issues found matching the query")
+        return
+    
+    print(f"Found {issues['total']} issues. Displaying {len(issues['issues'])} for selection.")
+    
+    # Display a summary of issues
+    for i, issue in enumerate(issues["issues"]):
+        print(f"{i+1}. {issue['key']} - {issue['status']} - {issue['summary'][:50]}...")
+    
+    # Select an issue
+    selected_issue = interactive_issue_selector(issues)
+    if not selected_issue:
+        print("No issue selected")
+        return
+    
+    print(f"\nAnalyzing issue {selected_issue['key']}...")
+    
+    # Analyze with RAG
+    analysis_result = analyze_issue_with_rag(selected_issue)
+    
+    if not analysis_result:
+        print("Analysis failed")
+        return
+    
+    # Display results
+    print("\n" + "="*80)
+    print(f"ANALYSIS FOR ISSUE {selected_issue['key']}")
+    print("="*80)
+    print(analysis_result["analysis"])
+    print("\n" + "="*80)
+    
+    if analysis_result["similar_issues"]:
+        print("\nSIMILAR PAST ISSUES:")
+        for i, similar in enumerate(analysis_result["similar_issues"]):
+            print(f"\n{i+1}. {similar['issue']['key']} (Similarity: {similar['similarity']:.2f})")
+            print(f"   Summary: {similar['issue']['summary']}")
+            print(f"   Resolution: {similar['resolution']}")
+    
+    # Ask if the user wants to save this resolution for future reference
+    try:
+        import inquirer
+        questions = [
+            inquirer.Confirm('save',
+                            message="Would you like to save your resolution to this issue for future reference?",
+                            default=False)
+        ]
+        answers = inquirer.prompt(questions)
+        
+        if answers and answers['save']:
+            resolution = input("Please enter the resolution approach you used: ")
+            
+            # Save to past issues database
+            try:
+                with open("past_issues.json", 'r') as f:
+                    past_issues = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                past_issues = {"issues": []}
+            
+            # Add embedding to the issue for future similarity comparison
+            model = SentenceTransformer('all-MiniLM-L6-v2')
+            issue_text = f"{selected_issue['summary']} {selected_issue['description']}"
+            embedding = model.encode(issue_text).tolist()
+            
+            selected_issue["embedding"] = embedding
+            selected_issue["resolution"] = resolution
+            
+            past_issues["issues"].append(selected_issue)
+            
+            with open("past_issues.json", 'w') as f:
+                json.dump(past_issues, f, indent=2)
+            
+            print("Resolution saved for future reference")
+    except ImportError:
+        print("Install 'inquirer' for interactive prompts: pip install inquirer")
+
+def show_future_features():
+    """Display information about planned future features"""
+    print("\n=== FUTURE ENHANCEMENTS ===\n")
+    print("The following features are planned for future releases:")
+    
+    print("\n1. LLM and RAG Integration")
+    print("   - Analyze issues using LLMs to suggest solutions")
+    print("   - Find similar past issues using semantic search")
+    print("   - Suggest resolutions based on how similar issues were resolved")
+    
+    print("\n2. Interactive Issue Selection")
+    print("   - Text-based interactive interface for selecting issues")
+    print("   - Side-by-side comparison of similar issues")
+    
+    print("\n3. Web Interface")
+    print("   - Visual dashboard of your Jira issues")
+    print("   - Point-and-click interface for issue analysis")
+    
+    print("\n4. Chat Platform Integration")
+    print("   - Slack integration for Jira operations")
+    print("   - Microsoft Teams integration")
+    
+    print("\nThese features are in development and will be released in future versions.")
+    print("For more information, see the 'future' directory in the project repository.")
+
 def main():
     parser = argparse.ArgumentParser(description="Jira API Interface")
     parser.add_argument("--action", 
                         choices=["user", "my-issues", "my-unresolved-issues", "search", "create", "update", 
                                 "comment", "transition", "projects", "project-details",
                                 "boards", "board-details", "sprints", "sprint-issues",
-                                "filters", "filter-details", "search-with-filter"], 
+                                "filters", "filter-details", "search-with-filter", "future-features"], 
                         default="user", help="Action to perform (default: user)")
     parser.add_argument("--max-results", type=int, default=10, 
                         help="Maximum number of results to return (default: 10)")
@@ -532,6 +798,8 @@ def main():
                         help="Sprint state filter for sprints action")
     parser.add_argument("--filter-id", type=int,
                         help="Filter ID for filter-details and search-with-filter actions")
+    parser.add_argument("--output-format", choices=["text", "json", "simplified_json"], 
+                        default="text", help="Output format (default: text)")
     
     args = parser.parse_args()
     
@@ -689,6 +957,9 @@ def main():
         
         issues = search_with_filter(args.filter_id, args.max_results)
         display_issues(issues)
+
+    elif args.action == "future-features":
+        show_future_features()
 
 if __name__ == "__main__":
     main()
