@@ -1,6 +1,37 @@
 # Jira API Interface
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+
 A command-line tool for interacting with Jira's REST API, providing easy access to common Jira operations.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+  - [Standard Installation](#standard-installation)
+  - [Using with Nix](#using-with-nix)
+- [Configuration](#configuration)
+- [Usage](#usage)
+  - [Basic Usage](#basic-usage)
+  - [Available Actions](#available-actions)
+  - [Common Parameters](#common-parameters)
+- [Examples](#examples)
+- [Workflow Examples](#workflow-examples)
+  - [Daily Task Management](#daily-task-management)
+  - [Sprint Planning](#sprint-planning)
+- [Extending the Script](#extending-the-script)
+  - [Example: Adding a New API Function](#example-adding-a-new-api-function)
+- [Troubleshooting](#troubleshooting)
+  - [Authentication Issues](#authentication-issues)
+  - [API Errors](#api-errors)
+  - [Common Error Messages](#common-error-messages)
+- [License](#license)
+- [Contributing](#contributing)
+  - [Code Style](#code-style)
+- [Acknowledgements](#acknowledgements)
 
 ## Overview
 
@@ -32,20 +63,22 @@ This Python script provides a comprehensive interface to the Jira API, allowing 
 
 ## Prerequisites
 
-- Python 3.x
+- Python 3.6 or higher
 - `requests` library
 - Access to a Jira instance with a valid API token
 
-## Setup
+## Installation
 
-1. Clone this repository or download the script
-2. Update the configuration in `jira-interface.py`:
-   ```python
-   JIRA_BASE_URL = "https://your-jira-instance.atlassian.net"
-   API_TOKEN = "your-api-token"
+### Standard Installation
+
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/cptfinch/jira-env.git
+   cd jira-env
    ```
-3. Install the required dependencies:
-   ```
+
+2. Install the required dependencies:
+   ```bash
    pip install requests
    ```
 
@@ -58,6 +91,24 @@ nix develop
 ```
 
 This will create an environment with Python and all required dependencies.
+
+## Configuration
+
+Before using the tool, you need to configure your Jira credentials:
+
+1. Update the configuration in `jira-interface.py`:
+   ```python
+   JIRA_BASE_URL = "https://your-jira-instance.atlassian.net"
+   API_TOKEN = "your-api-token"
+   ```
+
+2. Alternatively, you can set environment variables:
+   ```bash
+   export JIRA_BASE_URL="https://your-jira-instance.atlassian.net"
+   export JIRA_API_TOKEN="your-api-token"
+   ```
+
+> **Security Note**: It's recommended to use environment variables rather than hardcoding your API token in the script.
 
 ## Usage
 
@@ -220,6 +271,37 @@ python jira-interface.py --action filters
 python jira-interface.py --action search-with-filter --filter-id 123
 ```
 
+## Workflow Examples
+
+### Daily Task Management
+
+```bash
+# Start your day by checking your unresolved issues
+python jira-interface.py --action my-unresolved-issues
+
+# Pick an issue to work on and mark it as "In Progress"
+python jira-interface.py --action transition --issue-key PROJ-123 --transition "In Progress"
+
+# Add a comment about what you're working on
+python jira-interface.py --action comment --issue-key PROJ-123 --comment "Working on fixing the database connection issue"
+
+# When finished, mark the issue as "Done"
+python jira-interface.py --action transition --issue-key PROJ-123 --transition "Done"
+```
+
+### Sprint Planning
+
+```bash
+# List all active sprints for your team's board
+python jira-interface.py --action sprints --board-id 123 --sprint-state active
+
+# View issues in the current sprint
+python jira-interface.py --action sprint-issues --board-id 123 --sprint-id 456
+
+# Create a new task for the sprint
+python jira-interface.py --action create --project PROJ --summary "Implement login feature" --description "Add user authentication to the application" --issue-type "Task" --priority "Medium"
+```
+
 ## Extending the Script
 
 The script is designed to be easily extended. To add new functionality:
@@ -229,16 +311,73 @@ The script is designed to be easily extended. To add new functionality:
 3. Add a new action to the argument parser in the `main()` function
 4. Add the corresponding logic to handle the new action
 
+### Example: Adding a New API Function
+
+```python
+def get_issue_watchers(issue_key):
+    """Get the list of watchers for an issue."""
+    url = f"{JIRA_BASE_URL}/rest/api/2/issue/{issue_key}/watchers"
+    response = make_request("GET", url)
+    return response.json()
+
+def display_watchers(watchers_data):
+    """Display the watchers of an issue."""
+    print(f"Watchers ({watchers_data['watchCount']}):")
+    for watcher in watchers_data['watchers']:
+        print(f"- {watcher['displayName']} ({watcher['name']})")
+
+# Then in the main() function:
+# Add a new action to the argument parser
+parser.add_argument("--action", choices=[..., "watchers"], help="Action to perform")
+
+# Add the logic to handle the new action
+if args.action == "watchers":
+    if not args.issue_key:
+        print("Error: --issue-key is required for the watchers action")
+        sys.exit(1)
+    watchers_data = get_issue_watchers(args.issue_key)
+    display_watchers(watchers_data)
+```
+
 ## Troubleshooting
 
-- **Authentication Issues**: Ensure your API token is valid and has the necessary permissions
-- **API Errors**: Check the error messages returned by the Jira API for specific issues
-- **Rate Limiting**: If you're making many requests, you might hit Jira's rate limits
+### Authentication Issues
+
+- **Invalid API Token**: Ensure your API token is valid and has not expired
+- **Insufficient Permissions**: Verify that your Jira account has the necessary permissions for the actions you're trying to perform
+- **Environment Variables**: If using environment variables, ensure they are correctly set and accessible to the script
+
+### API Errors
+
+- **Rate Limiting**: If you receive 429 errors, you might be hitting Jira's rate limits. Add delays between requests or reduce the frequency of calls
+- **Invalid JQL**: If your searches fail, check your JQL syntax for errors
+- **Missing Fields**: When creating or updating issues, ensure all required fields for your Jira configuration are provided
+
+### Common Error Messages
+
+- **"Issue does not exist or you do not have permission to see it"**: Check the issue key and your permissions
+- **"Field 'XXX' cannot be set"**: This field might be read-only or require a specific format
+- **"Transition 'XXX' is not valid"**: The transition name might be incorrect or not available for the current issue status
 
 ## License
 
-This project is open source and available under the MIT License.
+This project is open source and available under the [MIT License](https://opensource.org/licenses/MIT).
 
 ## Contributing
 
-Contributions are welcome! Feel free to submit issues or pull requests. 
+Contributions are welcome! Here's how you can contribute:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit your changes: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin feature-name`
+5. Submit a pull request
+
+### Code Style
+
+Please follow the [PEP 8](https://www.python.org/dev/peps/pep-0008/) style guide for Python code.
+
+## Acknowledgements
+
+- [Jira REST API Documentation](https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/)
+- [Python Requests Library](https://requests.readthedocs.io/) 
