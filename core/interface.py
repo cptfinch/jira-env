@@ -30,6 +30,11 @@ class JiraInterface:
             env_file: Path to .env file (defaults to .env in current directory)
             override: Whether to override existing environment variables with values from .env
         """
+        # Store original environment variables before loading .env
+        original_base_url = os.environ.get("JIRA_BASE_URL")
+        original_url = os.environ.get("JIRA_URL")
+        original_api_token = os.environ.get("JIRA_API_TOKEN")
+        
         # Try to load from .env file if it exists
         if env_file:
             # Load from specified .env file
@@ -39,6 +44,15 @@ class JiraInterface:
             dotenv_path = find_dotenv(usecwd=True)
             if dotenv_path:
                 load_dotenv(dotenv_path=dotenv_path, override=override)
+        
+        # Restore original environment variables if they were set and we're not overriding
+        if not override:
+            if original_base_url:
+                os.environ["JIRA_BASE_URL"] = original_base_url
+            if original_url:
+                os.environ["JIRA_URL"] = original_url
+            if original_api_token:
+                os.environ["JIRA_API_TOKEN"] = original_api_token
         
         # Get configuration from environment variables (possibly set by dotenv)
         # Check for JIRA_BASE_URL first, then fall back to JIRA_URL if it exists
