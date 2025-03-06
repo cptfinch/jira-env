@@ -7,9 +7,25 @@ This module provides the command-line interface for interacting with the Jira AP
 import argparse
 import json
 import sys
+import os
+import yaml
 from typing import Dict, List, Any, Optional
 
 from core import JiraInterface
+
+
+def load_queries(file_path):
+    """Load JQL queries from a YAML file"""
+    try:
+        with open(file_path, 'r') as file:
+            data = yaml.safe_load(file)
+        return data.get('queries', [])
+    except FileNotFoundError:
+        print(f"Warning: Query file {file_path} not found")
+        return []
+    except yaml.YAMLError:
+        print(f"Warning: Error parsing YAML file {file_path}")
+        return []
 
 
 def parse_args():
@@ -19,7 +35,8 @@ def parse_args():
     # Main action argument
     parser.add_argument("action", choices=[
         "get-user", "get-issues", "get-issue", "create-issue", "update-issue",
-        "add-comment", "get-projects", "get-boards", "get-sprints", "transition-issue"
+        "add-comment", "get-projects", "get-boards", "get-sprints", "transition-issue",
+        "search"  # Added search action
     ], help="Action to perform")
     
     # Common arguments
@@ -29,9 +46,93 @@ def parse_args():
     parser.add_argument("--format", choices=["json", "table", "summary"], default="summary", 
                         help="Output format (default: summary)")
     
+    # Search-specific arguments
+    parser.add_argument("--query", "-q", help="Name of the query to use from jira_queries.yaml")
+    parser.add_argument("--jql", "-j", help="Custom JQL query to use instead of a named query")
+    parser.add_argument("--limit", "-l", type=int, default=10, help="Maximum number of results to return")
+    parser.add_argument("--list-queries", action="store_true", help="List available queries and exit")
+    
     # Other arguments would be added here...
     
     return parser.parse_args()
+
+
+def handle_search(jira, args):
+    """Handle the search action"""
+    # Load queries from YAML file
+    queries_file = os.path.join('exports', 'queries', 'jira_queries.yaml')
+    queries = load_queries(queries_file)
+    
+    # List available queries if requested
+    if args.list_queries:
+        print("Available queries:")
+        for query in queries:
+            print(f"  {query['name']}: {query['description']}")
+            print(f"    JQL: {query['jql']}")
+            print()
+        return None
+    
+    # Determine which JQL query to use
+    jql = None
+    if args.jql:
+        # Use custom JQL query provided as argument
+        jql = args.jql
+        print(f"Using custom JQL query: {jql}")
+    elif args.query:
+        # Find the named query in the loaded queries
+        for query in queries:
+            if query['name'] == args.query:
+                jql = query['jql']
+                print(f"Using query '{query['name']}': {query['description']}")
+                print(f"JQL: {jql}")
+                break
+        
+        if not jql:
+            print(f"Error: Query '{args.query}' not found in {queries_file}")
+            return None
+    else:
+        # No query specified, use the first one as default
+        if queries:
+            default_query = queries[0]
+            jql = default_query['jql']
+            print(f"Using default query '{default_query['name']}': {default_query['description']}")
+            print(f"JQL: {jql}")
+        else:
+            print(f"Error: No queries found in {queries_file}")
+            return None
+    
+    # Search for issues using the selected JQL query
+    return jira.search_issues(jql, max_results=args.limit)
+
+
+def format_search_results(results, format_type):
+    """Format search results based on the specified format"""
+    if not results:
+        return "No results found or error occurred"
+    
+    issues = results.get('issues', [])
+    total = results.get('total', 0)
+    
+    if format_type == "json":
+        return json.dumps(results, indent=2)
+    
+    output = []
+    output.append(f"Found {total} issues, showing {len(issues)}:")
+    
+    for issue in issues:
+        key = issue.get('key', 'Unknown')
+        summary = issue.get('fields', {}).get('summary', 'No summary')
+        status = issue.get('fields', {}).get('status', {}).get('name', 'Unknown')
+        
+        if format_type == "table":
+            output.append(f"| {key} | {status} | {summary} |")
+        else:  # summary
+            output.append(f"  {key}: {summary} (Status: {status})")
+    
+    if total > len(issues):
+        output.append(f"\nShowing {len(issues)} of {total} issues. Use --limit to see more.")
+    
+    return "\n".join(output)
 
 
 def main():
@@ -46,6 +147,11 @@ def main():
             result = jira.get_current_user()
         elif args.action == "get-issues":
             result = jira.get_my_issues()
+        elif args.action == "search":
+            result = handle_search(jira, args)
+            if result:
+                print(format_search_results(result, args.format))
+            return  # Early return to avoid additional formatting
         # Other actions would be handled here...
         else:
             print(f"Action {args.action} not implemented")
