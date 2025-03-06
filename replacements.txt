@@ -1,0 +1,4 @@
+YOUR_API_TOKEN_HERE==>YOUR_API_TOKEN_HERE
+your-jira-instance.atlassian.net==>your-jira-instance.atlassian.net
+https://your-jira-instance.atlassian.net==>https://your-jira-instance.atlassian.net
+gitlab.example.com ==>gitlab.example.com 
