@@ -28,6 +28,7 @@
             # Core requirements
             requests
             pyyaml
+            python-dotenv
             
             # RAG requirements
             openai
@@ -69,6 +70,7 @@
           # Core requirements
           requests
           pyyaml
+          python-dotenv
           
           # Development tools
           pytest
@@ -101,6 +103,7 @@
             echo "Python version: $(python --version)"
             echo "Requests package: $(python -c 'import requests; print(f"requests {requests.__version__}")')"
             echo "PyYAML package: $(python -c 'import yaml; print(f"pyyaml {yaml.__version__}")')"
+            echo "python-dotenv package: $(python -c 'import dotenv; print(f"python-dotenv {dotenv.__version__}")')"
             echo ""
             echo "Available commands:"
             echo "  jira-interface - Command-line interface"
@@ -149,15 +152,10 @@
             config = lib.mkIf cfg.enable {
               home.packages = [ jira-env ];
               
-              home.file.".config/jira-env/config.env" = lib.mkIf (!cfg.useApiTokenFromEnv && cfg.apiToken != "") {
-                text = ''
-                  JIRA_BASE_URL="${cfg.baseUrl}"
-                  JIRA_API_TOKEN="${cfg.apiToken}"
-                '';
-              };
-              
-              home.sessionVariables = lib.mkIf (cfg.useApiTokenFromEnv || cfg.apiToken == "") {
+              home.sessionVariables = {
                 JIRA_BASE_URL = cfg.baseUrl;
+              } // lib.optionalAttrs (!cfg.useApiTokenFromEnv && cfg.apiToken != "") {
+                JIRA_API_TOKEN = cfg.apiToken;
               };
             };
           };

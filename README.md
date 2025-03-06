@@ -103,17 +103,40 @@ If you use home-manager, you can add jira-env to your configuration:
 
 ### API Token Setup
 
-1. Generate a Jira API token from your Atlassian account
-2. Set the following environment variables:
-   ```
-   export JIRA_BASE_URL="https://your-jira-instance.atlassian.net"
-   export JIRA_API_TOKEN="your-api-token"
-   ```
-3. Alternatively, create a config file at `~/.config/jira-env/config.env` with the following content:
-   ```
-   JIRA_BASE_URL=https://your-jira-instance.atlassian.net
-   JIRA_API_TOKEN=your-api-token
-   ```
+You have two options for configuring your Jira credentials:
+
+#### Option 1: Environment Variables
+
+Set the following environment variables in your system:
+
+```bash
+export JIRA_BASE_URL="https://your-jira-instance.atlassian.net"
+export JIRA_API_TOKEN="your-api-token"
+```
+
+This is the recommended approach for production environments or when using tools like SOPS for secret management.
+
+#### Option 2: Using a .env File
+
+Create a `.env` file in your project directory with the following content:
+
+```
+JIRA_BASE_URL=https://your-jira-instance.atlassian.net
+JIRA_API_TOKEN=your-api-token
+```
+
+The `.env` file will be automatically detected and loaded when you use the JiraInterface.
+
+> **Note**: Make sure to add `.env` to your `.gitignore` file to avoid committing sensitive information to version control.
+
+You can also specify a custom location for your .env file:
+
+```python
+from jira_env import JiraInterface
+
+# Load from a custom .env file location
+jira = JiraInterface(env_file="/path/to/your/.env")
+```
 
 ## Usage
 
