@@ -5,8 +5,25 @@ import os
 import sys
 
 # Jira API configuration
-JIRA_BASE_URL = "https://your-jira-instance.atlassian.net"
-API_TOKEN = "YOUR_API_TOKEN_HERE"
+JIRA_BASE_URL = os.environ.get("JIRA_BASE_URL", "https://jira.example.com")
+API_TOKEN = os.environ.get("JIRA_API_TOKEN", "")
+
+if not API_TOKEN:
+    # Try to load from config file if environment variable is not set
+    config_path = os.path.expanduser("~/.config/jira-interface/config.env")
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            for line in f:
+                if line.strip() and '=' in line:
+                    key, value = line.strip().split('=', 1)
+                    if key == "JIRA_API_TOKEN":
+                        API_TOKEN = value.strip('"\'')
+                    elif key == "JIRA_BASE_URL":
+                        JIRA_BASE_URL = value.strip('"\'')
+
+if not API_TOKEN:
+    print("Error: JIRA_API_TOKEN not set. Please set it as an environment variable or in ~/.config/jira-interface/config.env")
+    sys.exit(1)
 
 headers = {
     "Accept": "application/json",
@@ -505,28 +522,53 @@ def search_issues_structured(jql_query, max_results=50, output_format="text"):
         # Create a simplified structure optimized for LLM processing
         simplified_issues = []
         for issue in issues_data["issues"]:
-            simplified_issue = {
-                "key": issue["key"],
-                "summary": issue["fields"]["summary"],
-                "description": issue["fields"].get("description", ""),
-                "status": issue["fields"]["status"]["name"],
-                "issue_type": issue["fields"]["issuetype"]["name"],
-                "priority": issue["fields"].get("priority", {}).get("name", "No priority"),
-                "created": issue["fields"]["created"],
-                "updated": issue["fields"]["updated"],
-                "assignee": issue["fields"].get("assignee", {}).get("displayName", "Unassigned"),
-                "reporter": issue["fields"].get("reporter", {}).get("displayName", "Unknown"),
-                "components": [c["name"] for c in issue["fields"].get("components", [])],
-                "labels": issue["fields"].get("labels", []),
-                "comments": [
-                    {
-                        "author": c["author"]["displayName"],
-                        "body": c["body"],
-                        "created": c["created"]
-                    } for c in issue["fields"].get("comment", {}).get("comments", [])
-                ]
-            }
-            simplified_issues.append(simplified_issue)
+            try:
+                simplified_issue = {
+                    "key": issue["key"],
+                    "summary": issue["fields"]["summary"] if issue["fields"] is not None and "summary" in issue["fields"] else "No summary",
+                    "description": issue["fields"].get("description", "") if issue["fields"] is not None else "",
+                    "status": issue["fields"]["status"]["name"] if issue["fields"] is not None and "status" in issue["fields"] and issue["fields"]["status"] is not None else "Unknown",
+                    "issue_type": issue["fields"]["issuetype"]["name"] if issue["fields"] is not None and "issuetype" in issue["fields"] and issue["fields"]["issuetype"] is not None else "Unknown",
+                    "priority": issue["fields"].get("priority", {}).get("name", "No priority") if issue["fields"] is not None else "No priority",
+                    "created": issue["fields"]["created"] if issue["fields"] is not None and "created" in issue["fields"] else "",
+                    "updated": issue["fields"]["updated"] if issue["fields"] is not None and "updated" in issue["fields"] else "",
+                    "assignee": issue["fields"].get("assignee", {}).get("displayName", "Unassigned") if issue["fields"] is not None else "Unassigned",
+                    "reporter": issue["fields"].get("reporter", {}).get("displayName", "Unknown") if issue["fields"] is not None else "Unknown",
+                    "components": [c["name"] for c in issue["fields"].get("components", [])] if issue["fields"] is not None else [],
+                    "labels": issue["fields"].get("labels", []) if issue["fields"] is not None else [],
+                    "comments": []
+                }
+                
+                # Add comments if available
+                if issue["fields"] is not None and "comment" in issue["fields"] and issue["fields"]["comment"] is not None and "comments" in issue["fields"]["comment"]:
+                    for comment in issue["fields"]["comment"]["comments"]:
+                        simplified_issue["comments"].append({
+                            "author": comment.get("author", {}).get("displayName", "Unknown"),
+                            "body": comment.get("body", ""),
+                            "created": comment.get("created", "")
+                        })
+                
+                simplified_issues.append(simplified_issue)
+            except Exception as e:
+                # Print error to stderr instead of stdout
+                print(f"Error processing issue {issue.get('key', 'unknown')}: {e}", file=sys.stderr)
+                # Add a minimal issue entry with just the key
+                simplified_issues.append({
+                    "key": issue.get("key", "unknown"),
+                    "summary": "Error processing issue",
+                    "description": f"Error: {str(e)}",
+                    "status": "Unknown",
+                    "issue_type": "Unknown",
+                    "priority": "Unknown",
+                    "created": "",
+                    "updated": "",
+                    "assignee": "Unknown",
+                    "reporter": "Unknown",
+                    "components": [],
+                    "labels": [],
+                    "comments": []
+                })
+                continue
         return {"issues": simplified_issues, "total": issues_data["total"]}
     else:  # text format
         display_issues(issues_data)
@@ -828,8 +870,13 @@ def main():
             parser.print_help()
             return
         
-        issues = search_issues(args.jql, args.max_results)
-        display_issues(issues)
+        if args.output_format in ["json", "simplified_json"]:
+            issues = search_issues_structured(args.jql, args.max_results, args.output_format)
+            if issues:
+                print(json.dumps(issues, indent=2))
+        else:
+            issues = search_issues(args.jql, args.max_results)
+            display_issues(issues)
     
     elif args.action == "create":
         # Check required parameters

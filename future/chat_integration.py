@@ -39,19 +39,26 @@ def start_discord_bot() -> None:
 
 # Example of how the Slack implementation might look
 def slack_bot_example():
-    """
-    Example implementation of a Slack bot.
-    This is just a placeholder to show the planned structure.
-    """
-    print("Example Slack implementation (not functional):")
-    print("""
-    from slack_bolt import App
-    from slack_bolt.adapter.socket_mode import SocketModeHandler
+    """Example implementation of a Slack bot for Jira integration"""
+    try:
+        from slack_bolt import App
+        from slack_bolt.adapter.socket_mode import SocketModeHandler
+    except ImportError:
+        print("slack_bolt package not installed. Install with: pip install slack-bolt")
+        return
+    
     import os
     from jira_interface import search_issues_structured
     from future.rag_integration import analyze_issue_with_rag
 
-    app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
+    # Use environment variables for tokens
+    slack_bot_token = os.environ.get("SLACK_BOT_TOKEN")
+    if not slack_bot_token:
+        print("Error: SLACK_BOT_TOKEN environment variable not set")
+        return
+        
+    # Initialize the Slack app with the bot token
+    app = App(token=slack_bot_token)
 
     @app.command("/jira-analyze")
     def analyze_jira_issues(ack, command, say):
@@ -96,5 +103,10 @@ def slack_bot_example():
         say(blocks=blocks)
 
     if __name__ == "__main__":
-        SocketModeHandler(app, os.environ.get("SLACK_APP_TOKEN")).start()
-    """) 
+        # Use environment variables for tokens
+        slack_app_token = os.environ.get("SLACK_APP_TOKEN")
+        if not slack_app_token:
+            print("Error: SLACK_APP_TOKEN environment variable not set")
+            return
+            
+        SocketModeHandler(app, slack_app_token).start() 

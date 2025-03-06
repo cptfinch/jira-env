@@ -26,6 +26,7 @@
           
           propagatedBuildInputs = with pkgs.python3Packages; [
             requests
+            pyyaml
           ];
           
           nativeBuildInputs = [ pkgs.makeWrapper ];
@@ -34,10 +35,16 @@
           format = "other";
           
           installPhase = ''
-            mkdir -p $out/bin
+            mkdir -p $out/bin $out/share/jira-interface
             cp jira-interface.py $out/bin/jira-interface
-            chmod +x $out/bin/jira-interface
+            cp jira_export_manager.py $out/bin/jira-export-manager
+            cp config.env.example $out/share/jira-interface/
+            cp setup_env.sh $out/share/jira-interface/
+            cp jira_queries.yaml $out/share/jira-interface/
+            chmod +x $out/bin/jira-interface $out/bin/jira-export-manager
             wrapProgram $out/bin/jira-interface \
+              --set PYTHONPATH $PYTHONPATH
+            wrapProgram $out/bin/jira-export-manager \
               --set PYTHONPATH $PYTHONPATH
           '';
           
@@ -53,6 +60,7 @@
         # Create a Python environment with the required packages
         pythonEnv = pkgs.python3.withPackages (ps: with ps; [
           requests
+          pyyaml
           # Add other Python packages as needed
         ]);
       in
@@ -66,7 +74,6 @@
         # Development shell
         devShells.default = pkgs.mkShell {
           packages = [
-            pkgs.jira-cli-go
             pythonEnv
             # Development tools
             pkgs.python3Packages.pip
@@ -79,6 +86,7 @@
             echo "Python environment ready with the following:"
             echo "Python version: $(python --version)"
             echo "Requests package: $(python -c 'import requests; print(f"requests {requests.__version__}")')"
+            echo "PyYAML package: $(python -c 'import yaml; print(f"pyyaml {yaml.__version__}")')"
             echo ""
             echo "Use 'python jira-interface.py' to run your Jira interface script"
           '';

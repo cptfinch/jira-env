@@ -15,14 +15,19 @@ A command-line tool for interacting with Jira's REST API, providing easy access 
   - [Using with Nix](#using-with-nix)
   - [Using as a Home Manager Module](#using-as-a-home-manager-module)
 - [Configuration](#configuration)
+  - [API Token Setup](#api-token-setup)
+  - [Home Manager Configuration](#home-manager-configuration)
+- [Making the Project Public](#making-the-project-public)
 - [Usage](#usage)
   - [Basic Usage](#basic-usage)
   - [Available Actions](#available-actions)
+  - [Jira Export Manager](#jira-export-manager)
   - [Common Parameters](#common-parameters)
 - [Examples](#examples)
 - [Workflow Examples](#workflow-examples)
   - [Daily Task Management](#daily-task-management)
   - [Sprint Planning](#sprint-planning)
+  - [Automated Reporting with Jira Export Manager](#automated-reporting-with-jira-export-manager)
 - [Extending the Script](#extending-the-script)
   - [Example: Adding a New API Function](#example-adding-a-new-api-function)
 - [Future Enhancements](#future-enhancements)
@@ -66,11 +71,17 @@ This Python script provides a comprehensive interface to the Jira API, allowing 
   - List your saved filters (custom searches)
   - Get details of specific filters
   - Search for issues using saved filters
+- **Jira Export Manager**:
+  - Define custom JQL queries in YAML
+  - Export query results to JSON files
+  - Organize exports by date
+  - Run specific queries or all at once
 
 ## Prerequisites
 
 - Python 3.6 or higher
 - `requests` library
+- `pyyaml` library (for Jira Export Manager)
 - Access to a Jira instance with a valid API token
 
 ## Installation
@@ -85,7 +96,7 @@ This Python script provides a comprehensive interface to the Jira API, allowing 
 
 2. Install the required dependencies:
    ```bash
-   pip install requests
+   pip install requests pyyaml
    ```
 
 ### Using with Nix
@@ -165,21 +176,103 @@ in
 
 ## Configuration
 
-Before using the tool, you need to configure your Jira credentials:
+### API Token Setup
 
-1. Update the configuration in `jira-interface.py`:
-   ```python
-   JIRA_BASE_URL = "https://your-jira-instance.atlassian.net"
-   API_TOKEN = "your-api-token"
-   ```
+This tool requires a Jira API token to authenticate with your Jira instance. You can set up your credentials in one of two ways:
 
-2. Alternatively, you can set environment variables:
+1. **Environment Variables** (Recommended):
    ```bash
    export JIRA_BASE_URL="https://your-jira-instance.atlassian.net"
-   export JIRA_API_TOKEN="your-api-token"
+   export JIRA_API_TOKEN="your-api-token-here"
    ```
 
-> **Security Note**: It's recommended to use environment variables rather than hardcoding your API token in the script.
+2. **Configuration File**:
+   Create a file at `~/.config/jira-interface/config.env` with the following content:
+   ```
+   JIRA_BASE_URL="https://your-jira-instance.atlassian.net"
+   JIRA_API_TOKEN="your-api-token-here"
+   ```
+
+You can generate a Jira API token from your Atlassian account at: https://id.atlassian.com/manage-profile/security/api-tokens
+
+### Home Manager Configuration
+
+If you're using Home Manager, you can configure the tool in your `home.nix`:
+
+```nix
+{
+  programs.jira-interface = {
+    enable = true;
+    baseUrl = "https://your-jira-instance.atlassian.net";
+    useApiTokenFromEnv = true; # Set to false if you want to store the token in Home Manager config
+    # apiToken = "your-token-here"; # Not recommended for security reasons
+  };
+}
+```
+
+When `useApiTokenFromEnv` is set to `true`, you'll need to set the `JIRA_API_TOKEN` environment variable separately.
+
+## Making the Project Public
+
+If you're forking this project or making your own version public, follow these steps to ensure no sensitive information is exposed:
+
+1. **Remove API Tokens and Credentials**:
+   - Never commit API tokens, passwords, or other credentials to a public repository
+   - Use environment variables or a local config file for sensitive information
+   - The `.gitignore` file is set up to exclude common credential files
+
+2. **Use the Setup Script**:
+   - Run `./setup_env.sh` to create the necessary configuration files
+   - This script will create a `~/.config/jira-interface/config.env` file for your credentials
+
+3. **Check for Sensitive Data**:
+   - Before pushing to a public repository, check for any sensitive data:
+   ```bash
+   grep -r "token\|password\|secret\|credential" --include="*.py" --include="*.json" .
+   ```
+   - Review the `jira_exports` directory for any sensitive information in exported data
+
+4. **Home Manager Integration**:
+   - The project includes a Home Manager module in the `flake.nix` file
+   - You can integrate it into your Home Manager configuration as described in the [Home Manager Configuration](#home-manager-configuration) section
+   - Never store your API token in the Home Manager configuration; use environment variables instead
+
+### Integrating with Home Manager
+
+To integrate this tool with your Home Manager configuration:
+
+1. **Add the Flake to Your Inputs**:
+   ```nix
+   {
+     inputs = {
+       nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+       home-manager.url = "github:nix-community/home-manager";
+       jira-interface.url = "github:yourusername/jira-env"; # Update with your repository
+     };
+   }
+   ```
+
+2. **Add the Module to Your Configuration**:
+   ```nix
+   {
+     imports = [
+       jira-interface.homeManagerModule
+     ];
+     
+     programs.jira-interface = {
+       enable = true;
+       baseUrl = "https://your-jira-instance.atlassian.net";
+       useApiTokenFromEnv = true; # Recommended for security
+     };
+   }
+   ```
+
+3. **Set Up Your API Token**:
+   - Add the following to your shell configuration (e.g., `.bashrc` or `.zshrc`):
+   ```bash
+   export JIRA_API_TOKEN="your-api-token-here"
+   ```
+   - Or use a tool like `direnv` to manage environment variables per project
 
 ## Usage
 
@@ -278,6 +371,84 @@ python jira-interface.py --action <action> [parameters]
     python jira-interface.py --action search-with-filter --filter-id 123
     ```
 
+### Jira Export Manager
+
+The Jira Export Manager is a companion script that allows you to define custom JQL queries in a YAML configuration file and export the results to JSON files. This is particularly useful for:
+
+- Creating regular exports of your Jira data
+- Saving custom searches for later analysis
+- Generating reports based on specific criteria
+- Building a local cache of Jira issues for offline access
+
+#### Configuration
+
+The export manager uses a YAML configuration file (`jira_queries.yaml`) to define your custom queries:
+
+```yaml
+queries:
+  - name: all_my_issues
+    jql: "assignee = currentUser() AND statusCategory != Done"
+    description: "All my unresolved issues across all projects"
+  
+  - name: crpt_issues
+    jql: "assignee = currentUser() AND statusCategory != Done AND project = CRPT"
+    description: "My unresolved CRPT project issues"
+  
+  - name: high_priority
+    jql: "assignee = currentUser() AND priority = High AND statusCategory != Done"
+    description: "My high priority unresolved issues"
+  
+  - name: recent_updates
+    jql: "assignee = currentUser() AND updated >= -7d"
+    description: "My issues updated in the last week"
+```
+
+Each query has:
+- A unique `name` (used for the output filename)
+- A `jql` query string
+- A `description` of what the query does
+
+#### Usage
+
+Run the export manager to execute all defined queries:
+
+```bash
+python jira_export_manager.py
+```
+
+Or run specific queries by name:
+
+```bash
+python jira_export_manager.py all_my_issues high_priority
+```
+
+#### Output
+
+The script creates a directory structure with the current date:
+
+```
+jira_exports/
+└── YYYY-MM-DD/
+    ├── all_my_issues.json
+    ├── crpt_issues.json
+    ├── high_priority.json
+    └── recent_updates.json
+```
+
+Each JSON file contains:
+- The issues matching the query
+- Metadata about the query (name, description, JQL, export time)
+- Total issue count and number of issues exported
+
+#### Benefits
+
+1. **Customization**: Define your own queries based on your specific needs
+2. **Automation**: Run the script regularly (e.g., via cron) to maintain up-to-date exports
+3. **Integration**: Use the exported JSON files with other tools or scripts
+4. **Documentation**: The YAML file serves as documentation for your common queries
+
+This functionality complements the direct API access provided by the main `jira-interface.py` script, giving you both interactive command-line usage and automated batch exports.
+
 ### Common Parameters
 
 - `--max-results`: Maximum number of results to return (default: 10)
@@ -371,6 +542,31 @@ python jira-interface.py --action sprint-issues --board-id 123 --sprint-id 456
 
 # Create a new task for the sprint
 python jira-interface.py --action create --project PROJ --summary "Implement login feature" --description "Add user authentication to the application" --issue-type "Task" --priority "Medium"
+```
+
+### Automated Reporting with Jira Export Manager
+
+```bash
+# Set up a daily export of your Jira data
+# First, create or modify jira_queries.yaml with your custom queries
+
+# Run a full export of all defined queries
+python jira_export_manager.py
+
+# Or export only specific queries
+python jira_export_manager.py all_my_issues high_priority
+
+# The exports are saved in dated folders for easy tracking
+# jira_exports/YYYY-MM-DD/query_name.json
+
+# You can then use these JSON files for:
+# - Creating custom reports
+# - Tracking progress over time
+# - Feeding data into other tools
+# - Offline analysis
+
+# Example: Set up a cron job to run daily exports
+# 0 9 * * * cd /path/to/jira-env && python jira_export_manager.py > /path/to/logs/jira_export.log 2>&1
 ```
 
 ## Extending the Script

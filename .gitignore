@@ -38,4 +38,13 @@ ENV/
 # Local configuration
 .env
 config.ini
-credentials.json 
+credentials.json
+
+# Jira exports and sensitive data
+jira_exports/
+config.env
+*_token*
+*_key*
+*_secret*
+*_password*
+*_credential* 
