@@ -139,7 +139,7 @@
               };
               
               enableExtensions = lib.mkOption {
-                type = lib.types.listOf (lib.types.enum ["rag", "web", "chat", "interactive", "all"]);
+                type = lib.types.listOf (lib.types.enum ["rag" "web" "chat" "interactive" "all"]);
                 default = [];
                 description = "List of extensions to enable";
                 example = ["web" "interactive"];
