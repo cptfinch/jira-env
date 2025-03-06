@@ -10,61 +10,32 @@ import json
 import os
 import sys
 from typing import Dict, List, Any, Optional, Union
-from dotenv import load_dotenv, find_dotenv
-
-# Standard locations for configuration files
-DEFAULT_ENV_FILE = ".env"  # Standard .env file in the current directory
 
 class JiraInterface:
     """
     Main class for interacting with the Jira API.
     """
     
-    def __init__(self, base_url=None, api_token=None, env_file=None, override=False):
+    def __init__(self, base_url=None, api_token=None):
         """
         Initialize the Jira Interface.
         
         Args:
-            base_url: Jira base URL (defaults to JIRA_BASE_URL or JIRA_URL env var)
+            base_url: Jira base URL (defaults to JIRA_URL env var)
             api_token: Jira API token (defaults to JIRA_API_TOKEN env var)
-            env_file: Path to .env file (defaults to .env in current directory)
-            override: Whether to override existing environment variables with values from .env
         """
-        # Store original environment variables before loading .env
-        original_base_url = os.environ.get("JIRA_BASE_URL")
-        original_url = os.environ.get("JIRA_URL")
-        original_api_token = os.environ.get("JIRA_API_TOKEN")
+        # Get configuration from environment variables
+        # Use the provided parameters first, then fall back to environment variables
+        self.base_url = base_url or os.environ.get("JIRA_URL")
         
-        # Try to load from .env file if it exists
-        if env_file:
-            # Load from specified .env file
-            load_dotenv(dotenv_path=env_file, override=override)
-        else:
-            # Auto-discover .env file in current directory or parent directories
-            dotenv_path = find_dotenv(usecwd=True)
-            if dotenv_path:
-                load_dotenv(dotenv_path=dotenv_path, override=override)
-        
-        # Restore original environment variables if they were set and we're not overriding
-        if not override:
-            if original_base_url:
-                os.environ["JIRA_BASE_URL"] = original_base_url
-            if original_url:
-                os.environ["JIRA_URL"] = original_url
-            if original_api_token:
-                os.environ["JIRA_API_TOKEN"] = original_api_token
-        
-        # Get configuration from environment variables (possibly set by dotenv)
-        # Check for JIRA_BASE_URL first, then fall back to JIRA_URL if it exists
-        if base_url:
-            self.base_url = base_url
-        else:
-            self.base_url = os.environ.get("JIRA_BASE_URL") or os.environ.get("JIRA_URL", "https://jira.example.com")
+        if not self.base_url:
+            # For backward compatibility, check JIRA_BASE_URL if JIRA_URL is not set
+            self.base_url = os.environ.get("JIRA_BASE_URL", "https://jira.example.com")
         
         self.api_token = api_token or os.environ.get("JIRA_API_TOKEN", "")
         
         if not self.api_token:
-            raise ValueError("JIRA_API_TOKEN not set. Please set it as an environment variable or in a .env file")
+            raise ValueError("JIRA_API_TOKEN not set. Please set it as an environment variable")
         
         self.headers = {
             "Accept": "application/json",
