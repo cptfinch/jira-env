@@ -4,6 +4,7 @@
 - **Start Date**: 2023-03-06
 - **RFC PR**: (to be created)
 - **Implementation PR**: (to be created)
+- **GitHub Issue**: [#1](https://github.com/cptfinch/jira-env/issues/1)
 
 ## Summary
 
