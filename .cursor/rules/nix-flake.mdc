@@ -1,0 +1,7 @@
+---
+description: When I don't have the requirements set up, run nix develop
+globs: 
+alwaysApply: false
+---
+run nix develop
+

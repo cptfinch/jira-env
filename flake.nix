@@ -74,9 +74,13 @@
           
           # Development tools
           pytest
+          pytest-cov
           black
           flake8
           mypy
+          
+          # BDD testing
+          behave
         ]);
       in
       {
@@ -95,6 +99,9 @@
             pkgs.python3Packages.black
             pkgs.python3Packages.flake8
             pkgs.python3Packages.mypy
+            pkgs.python3Packages.pytest
+            pkgs.python3Packages.pytest-cov
+            pkgs.python3Packages.behave
           ];
           
           # Shell hook to display Python version and available packages
