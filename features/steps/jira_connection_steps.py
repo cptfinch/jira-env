@@ -34,6 +34,30 @@ def step_check_custom_params(context):
     assert context.jira.base_url == context.custom_url
     assert context.jira.api_token == context.custom_token
 
+# Valid connection setup
+@given('I have a valid Jira connection')
+def step_valid_connection(context):
+    """Set up a valid Jira connection with mocked response"""
+    # Set up environment variables
+    context.env_patcher = patch.dict('os.environ', {
+        'JIRA_BASE_URL': 'https://test-jira.example.com',
+        'JIRA_API_TOKEN': 'test-token-123'
+    })
+    context.env_patcher.start()
+    
+    # Create JiraInterface
+    context.jira = JiraInterface()
+    
+    # Mock the requests.get method
+    context.mock_get = patch('requests.get').start()
+    context.mock_response = MagicMock()
+    context.mock_response.status_code = 200
+    context.mock_response.json.return_value = {
+        'displayName': 'Test User',
+        'emailAddress': 'test@example.com'
+    }
+    context.mock_get.return_value = context.mock_response
+
 # Authentication error steps
 @given('I have an invalid API token')
 def step_invalid_token(context):
