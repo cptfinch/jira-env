@@ -50,6 +50,55 @@ pip install -e .
 pip install jira-env
 ```
 
+### Using Nix
+
+If you use the Nix package manager, you can install and use jira-env with Nix:
+
+```bash
+# Clone the repository
+git clone https://github.com/cptfinch/jira-env.git
+cd jira-env
+
+# Enter a development shell
+nix develop
+
+# Or install the package
+nix profile install .
+```
+
+### Using home-manager
+
+If you use home-manager, you can add jira-env to your configuration:
+
+```nix
+{
+  inputs.jira-env.url = "github:cptfinch/jira-env";
+  
+  outputs = { self, nixpkgs, home-manager, jira-env, ... }: {
+    homeConfigurations."your-username" = home-manager.lib.homeManagerConfiguration {
+      # ... your other configuration ...
+      
+      modules = [
+        jira-env.homeManagerModule
+        
+        {
+          programs.jira-env = {
+            enable = true;
+            baseUrl = "https://your-jira-instance.atlassian.net";
+            
+            # Optional: API token (not recommended, use environment variable instead)
+            # apiToken = "your-api-token";
+            
+            # Optional: Enable specific extensions
+            enableExtensions = [ "web" "interactive" ];
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
 ## Configuration
 
 ### API Token Setup
@@ -117,6 +166,24 @@ export_manager.export_query(
     jql="assignee = currentUser() AND priority = High AND statusCategory != Done",
     description="My high priority unresolved issues"
 )
+```
+
+### Using with Nix
+
+When using the Nix development shell, you can run the commands directly:
+
+```bash
+# Enter the development shell
+nix develop
+
+# Run the CLI
+python cli.py get-user
+
+# Run the export manager
+python -m exports.manager
+
+# Run the web interface
+python -m web.interface
 ```
 
 ## Extensions
