@@ -59,6 +59,12 @@ def parse_args():
 
 def handle_search(jira, args):
     """Handle the search action"""
+    # Display connection information
+    masked_token = jira.api_token[:4] + "..." if jira.api_token else "Not set"
+    print(f"Connected to: {jira.base_url}")
+    print(f"Using API token: {masked_token}")
+    print()
+    
     # Load queries from YAML file
     queries_file = os.path.join('exports', 'queries', 'jira_queries.yaml')
     queries = load_queries(queries_file)
@@ -141,6 +147,14 @@ def main():
     
     try:
         jira = JiraInterface()
+        
+        # Display connection information for all commands except search
+        # (search already displays this in handle_search)
+        if args.action != "search":
+            masked_token = jira.api_token[:4] + "..." if jira.api_token else "Not set"
+            print(f"Connected to: {jira.base_url}")
+            print(f"Using API token: {masked_token}")
+            print()
         
         # Handle different actions
         if args.action == "get-user":
