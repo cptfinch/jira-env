@@ -25,7 +25,7 @@ class JiraInterface:
         Initialize the Jira Interface.
         
         Args:
-            base_url: Jira base URL (defaults to JIRA_BASE_URL env var)
+            base_url: Jira base URL (defaults to JIRA_BASE_URL or JIRA_URL env var)
             api_token: Jira API token (defaults to JIRA_API_TOKEN env var)
             env_file: Path to .env file (defaults to .env in current directory)
             override: Whether to override existing environment variables with values from .env
@@ -41,7 +41,12 @@ class JiraInterface:
                 load_dotenv(dotenv_path=dotenv_path, override=override)
         
         # Get configuration from environment variables (possibly set by dotenv)
-        self.base_url = base_url or os.environ.get("JIRA_BASE_URL", "https://jira.example.com")
+        # Check for JIRA_BASE_URL first, then fall back to JIRA_URL if it exists
+        if base_url:
+            self.base_url = base_url
+        else:
+            self.base_url = os.environ.get("JIRA_BASE_URL") or os.environ.get("JIRA_URL", "https://jira.example.com")
+        
         self.api_token = api_token or os.environ.get("JIRA_API_TOKEN", "")
         
         if not self.api_token:

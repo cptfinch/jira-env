@@ -117,8 +117,12 @@ Set the following environment variables in your system:
 
 ```bash
 export JIRA_BASE_URL="https://your-jira-instance.atlassian.net"
+# OR
+export JIRA_URL="https://your-jira-instance.atlassian.net"
 export JIRA_API_TOKEN="your-api-token"
 ```
+
+The system supports both `JIRA_BASE_URL` and `JIRA_URL` environment variables for the Jira instance URL. If both are set, `JIRA_BASE_URL` takes precedence.
 
 This is the recommended approach for production environments or when using tools like SOPS for secret management.
 
@@ -128,6 +132,8 @@ Create a `.env` file in your project directory with the following content:
 
 ```
 JIRA_BASE_URL=https://your-jira-instance.atlassian.net
+# OR
+JIRA_URL=https://your-jira-instance.atlassian.net
 JIRA_API_TOKEN=your-api-token
 ```
 
@@ -157,7 +163,124 @@ jira = JiraInterface(env_file="/path/to/your/.env")
 
 # Export predefined queries
 ./jira-cli.py export
+
+# Search for issues using predefined queries
+./jira-cli.py search --query all_my_issues
+
+# Search with a custom JQL query
+./jira-cli.py search --jql "assignee = currentUser() AND updated >= -1d"
+
+# List all available predefined queries
+./jira-cli.py search --list-queries
+
+# Limit the number of results
+./jira-cli.py search --query recent_updates --limit 5
+
+# Output in different formats (summary, json, table)
+./jira-cli.py search --query high_priority --format json
 ```
+
+### Search Command Examples
+
+The `search` command provides powerful functionality for finding Jira issues. Here are some examples:
+
+#### Using Predefined Queries
+
+```bash
+# Search for all your unresolved issues
+./jira-cli.py search --query all_my_issues
+
+# Search for your unresolved issues in a specific project
+./jira-cli.py search --query crpt_issues
+
+# Search for your high priority unresolved issues
+./jira-cli.py search --query high_priority
+
+# Search for your issues updated in the last week
+./jira-cli.py search --query recent_updates
+```
+
+#### Using Custom JQL Queries
+
+```bash
+# Search for issues updated in the last day
+./jira-cli.py search --jql "assignee = currentUser() AND updated >= -1d"
+
+# Search for issues in a specific project
+./jira-cli.py search --jql "project = PROJ AND statusCategory != Done"
+
+# Search for issues with a specific label
+./jira-cli.py search --jql "labels = important AND assignee = currentUser()"
+
+# Search for issues due in the next week
+./jira-cli.py search --jql "duedate >= now() AND duedate <= 1w"
+```
+
+#### Controlling Output
+
+```bash
+# Limit the number of results
+./jira-cli.py search --query all_my_issues --limit 5
+
+# Output in JSON format for programmatic processing
+./jira-cli.py search --query recent_updates --format json
+
+# Output in table format for better readability
+./jira-cli.py search --query high_priority --format table
+```
+
+### Predefined Queries
+
+The system comes with several predefined queries in `exports/queries/jira_queries.yaml`:
+
+- **all_my_issues**: All your unresolved issues across all projects
+  - JQL: `assignee = currentUser() AND statusCategory != Done`
+
+- **crpt_issues**: Your unresolved issues in the CRPT project
+  - JQL: `assignee = currentUser() AND statusCategory != Done AND project = CRPT`
+
+- **high_priority**: Your high priority unresolved issues
+  - JQL: `assignee = currentUser() AND priority = High AND statusCategory != Done`
+
+- **recent_updates**: Your issues updated in the last week
+  - JQL: `assignee = currentUser() AND updated >= -7d`
+
+### Creating Custom Queries
+
+You can add your own predefined queries by editing the `exports/queries/jira_queries.yaml` file:
+
+```yaml
+queries:
+  - name: my_custom_query
+    jql: "project = MYPROJ AND assignee = currentUser() AND labels = important"
+    description: "My important issues in MYPROJ"
+```
+
+After adding your custom query, you can use it with:
+
+```bash
+./jira-cli.py search --query my_custom_query
+```
+
+### JQL Reference
+
+JQL (Jira Query Language) is a powerful query language for searching Jira issues. Here are some common JQL operators and examples:
+
+- **Basic operators**: `=`, `!=`, `>`, `>=`, `<`, `<=`, `IN`, `NOT IN`, `~` (contains), `!~` (does not contain)
+- **Logical operators**: `AND`, `OR`, `NOT`
+- **Special functions**: `currentUser()`, `now()`, `empty()`, `membersOf()`
+- **Time expressions**: `-1d` (1 day ago), `1w` (1 week from now), `startOfDay()`, `endOfDay()`
+
+Examples:
+
+```
+project = PROJ AND status = "In Progress"
+assignee = currentUser() AND priority IN (High, Highest)
+labels ~ "important" AND updated >= -7d
+duedate <= 1w OR duedate IS EMPTY
+```
+
+For more information on JQL, refer to the [Atlassian JQL documentation](https://support.atlassian.com/jira-software-cloud/docs/advanced-search-reference-jql-fields/).
 
 ### Programmatic Usage
 
