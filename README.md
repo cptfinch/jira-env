@@ -21,8 +21,14 @@ The project follows a modular architecture with the following components:
 
 ```
 project/
-├── core.py                # Core Jira API functionality
-├── cli.py                 # Command-line interface
+├── core/                  # Core Jira API functionality
+│   ├── __init__.py        # Module exports
+│   └── interface.py       # JiraInterface implementation
+├── cli/                   # Command-line interface
+│   ├── __init__.py        # Module exports
+│   ├── commands.py        # CLI commands implementation
+│   └── jira.py            # CLI entry point
+├── jira-cli.py            # Executable CLI script
 ├── exports/               # Export functionality extension
 │   ├── manager.py         # Export manager implementation
 │   └── queries/           # Query definitions
@@ -144,13 +150,13 @@ jira = JiraInterface(env_file="/path/to/your/.env")
 
 ```bash
 # Get information about the current user
-jira-interface get-user
+./jira-cli.py get-user
 
 # Get issues assigned to the current user
-jira-interface get-issues
+./jira-cli.py get-issues
 
 # Export predefined queries
-jira-export
+./jira-cli.py export
 ```
 
 ### Programmatic Usage
@@ -200,13 +206,13 @@ When using the Nix development shell, you can run the commands directly:
 nix develop
 
 # Run the CLI
-python cli.py --help
+./jira-cli.py --help
 
 # Run the export manager
 python -m exports.manager
 
 # Run the web interface (development mode)
-python web/interface.py
+python -m web.interface
 ```
 
 Note: Some modules like the web interface expect the package to be installed as 'jira_env'. 
@@ -235,12 +241,12 @@ The web extension provides a browser-based interface to the Jira API.
 
 ```bash
 # Start the web interface
-python -m jira_env.web.interface
+python -m web.interface
 ```
 
 ### Chat Integration
 
-The chat extension provides integration with chat platforms like Slack and Discord.
+The chat integration provides integration with chat platforms like Slack and Discord.
 
 ```python
 from jira_env import JiraChatIntegration
@@ -248,81 +254,67 @@ from jira_env import JiraChatIntegration
 # Initialize the chat integration
 chat = JiraChatIntegration()
 
-# Send a message with issue information
-chat.send_issue_update("PROJ-123")
+# Send a message about an issue
+chat.send_issue_update("PROJ-123", "Issue has been resolved")
 ```
 
 ### Interactive Selection
 
-The interactive extension provides a more user-friendly way to select and interact with Jira issues in the terminal.
+The interactive extension provides a terminal-based UI for selecting and working with Jira issues.
 
 ```python
 from jira_env import interactive_issue_selector
 
 # Select an issue interactively
 selected_issue = interactive_issue_selector()
-print(f"Selected issue: {selected_issue['key']}")
+print(f"You selected: {selected_issue['key']}")
+
+# Or use batch selection
+from jira_env import batch_issue_selector
+
+selected_issues = batch_issue_selector()
+print(f"You selected {len(selected_issues)} issues")
 ```
 
-## License
+## Development
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### Module Structure
+
+The project is organized into several modules:
+
+1. **core**: Contains the core JiraInterface class for interacting with the Jira API
+2. **cli**: Contains the command-line interface implementation
+3. **exports**: Handles exporting Jira queries to various formats
+4. **rag**: Implements Retrieval-Augmented Generation for Jira issues
+5. **web**: Provides a web interface to the Jira API
+6. **chat**: Implements chat platform integrations
+7. **interactive**: Provides terminal-based interactive selection tools
+
+### Adding New Features
+
+To add a new feature:
+
+1. Identify which module it belongs to
+2. Implement the feature in the appropriate module
+3. Update the module's `__init__.py` to export any new public functions or classes
+4. Update the top-level `__init__.py` if the feature should be part of the public API
+5. Add tests for the new feature
+6. Update documentation
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run tests for a specific module
+pytest tests/test_core.py
+```
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Development with Nix
+## License
 
-This project uses [Nix](https://nixos.org/) for dependency management and development environment setup. This ensures that all developers have the same environment with the exact same versions of all dependencies.
-
-### Prerequisites
-
-- Install Nix: https://nixos.org/download.html
-- Enable flakes: Add `experimental-features = nix-command flakes` to your `~/.config/nix/nix.conf` or `/etc/nix/nix.conf`
-
-### Development Workflow
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/cptfinch/jira-env.git
-   cd jira-env
-   ```
-
-2. Enter the development environment:
-   ```bash
-   nix develop
-   ```
-
-   This will set up a shell with all the required dependencies installed.
-
-3. Run tests:
-   ```bash
-   cd tests
-   python -m unittest
-   ```
-
-4. Run the demo script:
-   ```bash
-   python search_demo.py --list-queries
-   ```
-
-### Adding New Dependencies
-
-To add new dependencies:
-
-1. Edit the `flake.nix` file and add the dependency to the appropriate section:
-   - For runtime dependencies: Add to `propagatedBuildInputs` in the `jira-env` package
-   - For development dependencies: Add to the `pythonEnv` definition and the `packages` list in `devShells.default`
-
-2. Exit and re-enter the development shell:
-   ```bash
-   exit
-   nix develop
-   ```
-
-### Important Notes
-
-- Do not use `pip install` to manage dependencies. All dependencies should be managed through the `flake.nix` file.
-- The development environment provides all the necessary tools and libraries. There's no need to create a virtual environment or install packages manually.
-- If you encounter any issues with dependencies, make sure you're using the Nix development environment by running `nix develop`. 
+This project is licensed under the MIT License - see the LICENSE file for details. 
