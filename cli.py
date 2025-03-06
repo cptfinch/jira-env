@@ -9,7 +9,7 @@ import json
 import sys
 from typing import Dict, List, Any, Optional
 
-from jira_env.core import JiraInterface
+from core import JiraInterface
 
 
 def parse_args():

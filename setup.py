@@ -51,7 +51,7 @@ setup(
     url="https://github.com/cptfinch/jira-env",
     packages=find_packages(),
     package_data={
-        "jira_env": ["data/*.yaml"],
+        "": ["data/*.yaml", "exports/queries/*.yaml"],
     },
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -69,9 +69,9 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "jira-interface=jira_env.cli:main",
-            "jira-export=jira_env.export_manager:main",
-            "jira-web=jira_env.web.interface:main",
+            "jira-interface=cli:main",
+            "jira-export=exports.manager:main",
+            "jira-web=web.interface:main",
         ],
     },
 ) 
