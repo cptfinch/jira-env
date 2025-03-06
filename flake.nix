@@ -8,9 +8,10 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    jira-env.url = "github:cptfinch/jira-env";
   };
 
-  outputs = { self, nixpkgs, flake-utils, home-manager }:
+  outputs = { self, nixpkgs, flake-utils, home-manager, jira-env }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
