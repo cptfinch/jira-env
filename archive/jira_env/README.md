@@ -15,25 +15,6 @@ This Python package provides a comprehensive interface to the Jira API, allowing
 - Export management for Jira queries
 - Extensions for RAG, web interface, chat integration, and interactive selection
 
-## Project Structure
-
-The project follows a modular architecture with the following components:
-
-```
-project/
-├── core.py                # Core Jira API functionality
-├── cli.py                 # Command-line interface
-├── exports/               # Export functionality extension
-│   ├── manager.py         # Export manager implementation
-│   └── queries/           # Query definitions
-├── rag/                   # RAG extension
-├── web/                   # Web interface extension
-├── chat/                  # Chat integration extension
-└── interactive/           # Interactive selection extension
-```
-
-Each extension is a self-contained module with its own implementation and dependencies.
-
 ## Installation
 
 ### From Source
@@ -99,26 +80,6 @@ for issue in my_issues:
     print(f"{issue['key']}: {issue['summary']}")
 ```
 
-### Using the Export Manager
-
-```python
-from jira_env import JiraExportManager
-
-# Initialize the export manager
-export_manager = JiraExportManager()
-
-# Export all predefined queries
-exported_files = export_manager.export_all()
-print(f"Exported {len(exported_files)} files")
-
-# Export a specific query
-export_manager.export_query(
-    name="high_priority",
-    jql="assignee = currentUser() AND priority = High AND statusCategory != Done",
-    description="My high priority unresolved issues"
-)
-```
-
 ## Extensions
 
 ### RAG Integration
@@ -126,7 +87,7 @@ export_manager.export_query(
 The RAG (Retrieval-Augmented Generation) extension provides intelligent analysis of Jira issues.
 
 ```python
-from jira_env import JiraRAG
+from jira_env.rag import JiraRAG
 
 # Initialize the RAG system
 rag = JiraRAG()
@@ -149,27 +110,9 @@ python -m jira_env.web.interface
 
 The chat extension provides integration with chat platforms like Slack and Discord.
 
-```python
-from jira_env import JiraChatIntegration
-
-# Initialize the chat integration
-chat = JiraChatIntegration()
-
-# Send a message with issue information
-chat.send_issue_update("PROJ-123")
-```
-
 ### Interactive Selection
 
 The interactive extension provides a more user-friendly way to select and interact with Jira issues in the terminal.
-
-```python
-from jira_env import interactive_issue_selector
-
-# Select an issue interactively
-selected_issue = interactive_issue_selector()
-print(f"Selected issue: {selected_issue['key']}")
-```
 
 ## License
 
