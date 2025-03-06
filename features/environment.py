@@ -13,6 +13,9 @@ def before_all(context):
     # Set up any global configuration here
     print("Starting Jira API tests...")
     
+    # Set the BEHAVE_TESTING environment variable to indicate we're in a test environment
+    os.environ['BEHAVE_TESTING'] = 'true'
+    
     # Ensure we have a place to store test data
     context.test_data = {}
 
@@ -57,6 +60,14 @@ def after_scenario(context, scenario):
     # Clean up any mocks or patches
     if hasattr(context, 'env_patcher') and context.env_patcher:
         context.env_patcher.stop()
+    
+    # Stop specific patches
+    if hasattr(context, 'requests_patch'):
+        context.requests_patch.stop()
+    if hasattr(context, 'requests_post_patch'):
+        context.requests_post_patch.stop()
+    if hasattr(context, 'interface_patch'):
+        context.interface_patch.stop()
     
     # Stop all patches to ensure clean state
     patch.stopall() 

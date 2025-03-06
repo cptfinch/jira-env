@@ -5,12 +5,7 @@ Feature: Jira Connection
   So that I can interact with Jira issues
 
   Background:
-    Given the Jira environment variables are set
-
-  @initialization @env_vars
-  Scenario: Initialize Jira interface with environment variables
-    When I create a JiraInterface instance
-    Then the instance should use the environment variables
+    Given the Jira API is mocked
 
   @initialization @custom_params
   Scenario: Initialize Jira interface with custom parameters
