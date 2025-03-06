@@ -9,8 +9,11 @@ This package provides tools for interacting with Jira's REST API, including:
 
 __version__ = "0.1.0"
 
+# Import core functionality
 from core import JiraInterface
-from exports import JiraExportManager
+
+# Import CLI functionality
+from cli import main, parse_args
 
 # Import extension modules
 from rag import JiraRAG
@@ -21,7 +24,10 @@ from interactive import interactive_issue_selector, batch_issue_selector, get_is
 __all__ = [
     # Core
     'JiraInterface',
-    'JiraExportManager',
+    
+    # CLI
+    'main',
+    'parse_args',
     
     # RAG
     'JiraRAG',

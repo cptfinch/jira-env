@@ -88,5 +88,40 @@ class JiraInterface:
         # Implementation would continue with the rest of the function...
         # For brevity, we're just returning an empty list for now
         return []
+    
+    def search_issues(self, jql: str, max_results: int = 50, fields: List[str] = None) -> Dict[str, Any]:
+        """
+        Search for issues using JQL (Jira Query Language)
+        
+        Args:
+            jql: JQL query string
+            max_results: Maximum number of results to return (default: 50)
+            fields: List of fields to include in the response (default: all fields)
+            
+        Returns:
+            Dictionary containing search results with issues and pagination info
+        """
+        url = f"{self.base_url}/rest/api/2/search"
+        
+        # Prepare the request payload
+        payload = {
+            "jql": jql,
+            "maxResults": max_results,
+            "startAt": 0
+        }
+        
+        # Add fields if specified
+        if fields:
+            payload["fields"] = fields
+        
+        # Make the API request
+        response = requests.post(url, headers=self.headers, json=payload)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Error: {response.status_code}")
+            print(response.text)
+            return {"issues": [], "total": 0}
 
 # Additional methods would be added here, converted from the functions in jira-interface.py 

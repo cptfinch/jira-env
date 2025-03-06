@@ -200,14 +200,17 @@ When using the Nix development shell, you can run the commands directly:
 nix develop
 
 # Run the CLI
-python cli.py get-user
+python cli.py --help
 
 # Run the export manager
 python -m exports.manager
 
-# Run the web interface
-python -m web.interface
+# Run the web interface (development mode)
+python web/interface.py
 ```
+
+Note: Some modules like the web interface expect the package to be installed as 'jira_env'. 
+In development mode, you may need to run the Python files directly instead of using the module syntax.
 
 ## Extensions
 
@@ -267,4 +270,59 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. 
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Development with Nix
+
+This project uses [Nix](https://nixos.org/) for dependency management and development environment setup. This ensures that all developers have the same environment with the exact same versions of all dependencies.
+
+### Prerequisites
+
+- Install Nix: https://nixos.org/download.html
+- Enable flakes: Add `experimental-features = nix-command flakes` to your `~/.config/nix/nix.conf` or `/etc/nix/nix.conf`
+
+### Development Workflow
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/cptfinch/jira-env.git
+   cd jira-env
+   ```
+
+2. Enter the development environment:
+   ```bash
+   nix develop
+   ```
+
+   This will set up a shell with all the required dependencies installed.
+
+3. Run tests:
+   ```bash
+   cd tests
+   python -m unittest
+   ```
+
+4. Run the demo script:
+   ```bash
+   python search_demo.py --list-queries
+   ```
+
+### Adding New Dependencies
+
+To add new dependencies:
+
+1. Edit the `flake.nix` file and add the dependency to the appropriate section:
+   - For runtime dependencies: Add to `propagatedBuildInputs` in the `jira-env` package
+   - For development dependencies: Add to the `pythonEnv` definition and the `packages` list in `devShells.default`
+
+2. Exit and re-enter the development shell:
+   ```bash
+   exit
+   nix develop
+   ```
+
+### Important Notes
+
+- Do not use `pip install` to manage dependencies. All dependencies should be managed through the `flake.nix` file.
+- The development environment provides all the necessary tools and libraries. There's no need to create a virtual environment or install packages manually.
+- If you encounter any issues with dependencies, make sure you're using the Nix development environment by running `nix develop`. 
