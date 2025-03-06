@@ -1,8 +1,0 @@
-# Core dependencies
-requests>=2.25.0
-pyyaml>=5.4.0
-
-# Interactive-specific dependencies
-prompt_toolkit>=3.0.0
-rich>=10.0.0
-inquirer>=2.7.0 

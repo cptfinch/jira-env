@@ -1,9 +1,0 @@
-# Core dependencies
-requests>=2.25.0
-pyyaml>=5.4.0
-
-# Web-specific dependencies
-flask>=2.0.0
-streamlit>=1.0.0
-plotly>=5.0.0
-pandas>=1.3.0 

@@ -1,8 +1,0 @@
-# Core dependencies
-requests>=2.25.0
-pyyaml>=5.4.0
-
-# Chat-specific dependencies
-slack-sdk>=3.0.0
-botbuilder-core>=4.14.0
-discord.py>=2.0.0 
