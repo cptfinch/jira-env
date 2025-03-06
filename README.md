@@ -28,6 +28,7 @@ A command-line tool for interacting with Jira's REST API, providing easy access 
   - [Daily Task Management](#daily-task-management)
   - [Sprint Planning](#sprint-planning)
   - [Automated Reporting with Jira Export Manager](#automated-reporting-with-jira-export-manager)
+- [Roadmap](#roadmap)
 - [Extending the Script](#extending-the-script)
   - [Example: Adding a New API Function](#example-adding-a-new-api-function)
 - [Future Enhancements](#future-enhancements)
@@ -575,6 +576,29 @@ python jira_export_manager.py all_my_issues high_priority
 # 0 9 * * * cd /path/to/jira-env && python jira_export_manager.py > /path/to/logs/jira_export.log 2>&1
 ```
 
+## Roadmap
+
+We have an exciting roadmap of planned features for Jira API Interface. For a detailed view of upcoming features, timelines, and priorities, please see our [ROADMAP.md](ROADMAP.md) file.
+
+Key upcoming features include:
+
+- **RAG Integration**: Using LLMs and Retrieval-Augmented Generation for intelligent issue analysis
+- **Interactive Issue Selection**: Terminal UI for selecting and working with issues
+- **Web Interface**: Browser-based dashboard for Jira data
+- **Chat Platform Integration**: Integrations with Slack, MS Teams, and Discord
+
+For detailed design documents on major features, see the [rfcs](rfcs/) directory.
+
+### Project Management
+
+We use GitHub's project management tools to track the development of new features:
+
+- **Issues**: Check our [GitHub Issues](https://github.com/cptfinch/jira-env/issues) for current tasks, bugs, and feature requests
+- **Project Board**: View our [Project Board](https://github.com/cptfinch/jira-env/projects) to see what's in progress, what's planned, and what's completed
+- **Milestones**: Track progress towards specific releases in our [Milestones](https://github.com/cptfinch/jira-env/milestones)
+
+If you're interested in contributing, look for issues labeled `good-first-issue` or `help-wanted`.
+
 ## Extending the Script
 
 The script is designed to be easily extended. To add new functionality:
@@ -676,13 +700,15 @@ This project is open source and available under the [MIT License](https://openso
 
 ## Contributing
 
-Contributions are welcome! Here's how you can contribute:
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin feature-name`
-5. Submit a pull request
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+For major changes, please open an issue first to discuss what you would like to change. Check our [ROADMAP.md](ROADMAP.md) for planned features you might want to contribute to.
 
 ### Code Style
 
