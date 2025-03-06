@@ -130,10 +130,31 @@ def format_search_results(results, format_type):
         summary = issue.get('fields', {}).get('summary', 'No summary')
         status = issue.get('fields', {}).get('status', {}).get('name', 'Unknown')
         
+        # Get comments if available
+        comments = issue.get('fields', {}).get('comment', {}).get('comments', [])
+        recent_comments = comments[-2:] if len(comments) > 0 else []  # Get the last 2 comments
+        
         if format_type == "table":
             output.append(f"| {key} | {status} | {summary} |")
+            # Add comments in table format
+            for comment in recent_comments:
+                author = comment.get('author', {}).get('displayName', 'Unknown')
+                body = comment.get('body', '').replace('\n', ' ')[:100]  # Truncate long comments
+                if len(body) == 100:
+                    body += "..."
+                output.append(f"|  | Comment by {author} | {body} |")
         else:  # summary
             output.append(f"  {key}: {summary} (Status: {status})")
+            # Add comments in summary format
+            if recent_comments:
+                output.append(f"    Recent comments:")
+                for comment in recent_comments:
+                    author = comment.get('author', {}).get('displayName', 'Unknown')
+                    created = comment.get('created', '').split('T')[0]  # Just get the date part
+                    body = comment.get('body', '').replace('\n', ' ')[:100]  # Truncate long comments
+                    if len(body) == 100:
+                        body += "..."
+                    output.append(f"      {created} - {author}: {body}")
     
     if total > len(issues):
         output.append(f"\nShowing {len(issues)} of {total} issues. Use --limit to see more.")

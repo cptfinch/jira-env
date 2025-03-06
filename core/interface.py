@@ -93,16 +93,19 @@ class JiraInterface:
         """
         url = f"{self.base_url}/rest/api/2/search"
         
+        # Default fields to include if none specified
+        if fields is None:
+            fields = ["summary", "status", "comment"]
+        elif "comment" not in fields:
+            fields.append("comment")
+        
         # Prepare the request payload
         payload = {
             "jql": jql,
             "maxResults": max_results,
-            "startAt": 0
+            "startAt": 0,
+            "fields": fields
         }
-        
-        # Add fields if specified
-        if fields:
-            payload["fields"] = fields
         
         # Make the API request
         response = requests.post(url, headers=self.headers, json=payload)
