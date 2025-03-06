@@ -58,6 +58,19 @@ else
     echo "✅ No obvious organization-specific URLs found"
 fi
 
+# Check for sensitive data in git history
+echo "Checking for sensitive data in git history..."
+GIT_SENSITIVE=$(git log -p | grep -A 3 -B 3 "API_TOKEN.*=.*[a-zA-Z0-9]\|password.*=.*[a-zA-Z0-9]\|jira\.goiba\.net" | grep -v "example\|template\|your-jira-instance\|config.env.example\|os.environ.get\|environment variable")
+
+if [ -n "$GIT_SENSITIVE" ]; then
+    echo "⚠️ CRITICAL: Sensitive data found in git history!"
+    echo "This is a serious security risk. You must clean the git history before making this repository public."
+    echo "Use the provided clean_git_history.sh script or BFG Repo-Cleaner to remove sensitive data from the git history."
+    echo "See clean_with_bfg.md for detailed instructions."
+else
+    echo "✅ No obvious sensitive data found in git history"
+fi
+
 echo ""
 echo "Cleanup complete! Please review any warnings above before making the repository public."
-echo "Remember to run 'git add .gitignore config.env.example setup_env.sh cleanup_for_public.sh' to include these files in your repository." 
+echo "Remember to run 'git add .gitignore config.env.example setup_env.sh cleanup_for_public.sh clean_git_history.sh clean_with_bfg.md' to include these files in your repository." 

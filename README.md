@@ -232,7 +232,13 @@ If you're forking this project or making your own version public, follow these s
    ```
    - Review the `jira_exports` directory for any sensitive information in exported data
 
-4. **Home Manager Integration**:
+4. **Clean Git History**:
+   - **IMPORTANT**: Git history may contain sensitive information even if you've removed it from the current files
+   - Use the provided `clean_git_history.sh` script or BFG Repo-Cleaner to remove sensitive data from the entire git history
+   - See `clean_with_bfg.md` for detailed instructions on using BFG Repo-Cleaner
+   - After cleaning, verify that the sensitive data has been removed by checking the git history
+
+5. **Home Manager Integration**:
    - The project includes a Home Manager module in the `flake.nix` file
    - You can integrate it into your Home Manager configuration as described in the [Home Manager Configuration](#home-manager-configuration) section
    - Never store your API token in the Home Manager configuration; use environment variables instead
