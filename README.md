@@ -180,6 +180,27 @@ jira = JiraInterface(env_file="/path/to/your/.env")
 ./jira-cli.py search --query high_priority --format json
 ```
 
+### Search Results with Comments
+
+The search results include recent comments for each issue, providing more context about the current status and activity:
+
+```
+NCIPT-42861: SBF.128 - ukhspc is sending PLC data from the future (Status: Work in progress)
+  Recent comments:
+    2025-01-08 - Christopher Finch: Resolving this one to consolidate actions in to PSD-6147...
+    2025-01-21 - Frederic Moniquet: (CCB - CDANTIN,FMONIQU) Reopening as the issue is not solved...
+```
+
+- The two most recent comments are displayed for each issue
+- Comments include the date, author, and a truncated version of the content
+- Long comments are truncated to keep the output readable
+- Comments are formatted differently in each output format:
+  - In summary format: Indented under each issue
+  - In table format: Shown as additional rows
+  - In JSON format: Full comment data is included
+
+This feature helps you quickly understand the current status and recent activity on issues without having to open them in the Jira web interface.
+
 ### Search Command Examples
 
 The `search` command provides powerful functionality for finding Jira issues. Here are some examples:
@@ -227,6 +248,9 @@ The `search` command provides powerful functionality for finding Jira issues. He
 
 # Output in table format for better readability
 ./jira-cli.py search --query high_priority --format table
+
+# View issues with their recent comments
+./jira-cli.py search --query all_my_issues --limit 5
 ```
 
 ### Predefined Queries
