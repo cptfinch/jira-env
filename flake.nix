@@ -83,12 +83,32 @@
           # BDD testing
           behave
         ]);
+        
+        # Create a wrapper script for the CLI
+        jira-cli-wrapper = pkgs.writeScriptBin "jira-cli" ''
+          #!${pkgs.bash}/bin/bash
+          export PYTHONPATH=${self}:$PYTHONPATH
+          exec ${pythonEnv}/bin/python ${self}/jira-cli.py "$@"
+        '';
       in
       {
         # Expose the package
         packages = {
           default = jira-env;
           jira-env = jira-env;
+          jira-cli = jira-cli-wrapper;
+        };
+
+        # Add apps for nix run
+        apps = {
+          default = {
+            type = "app";
+            program = "${jira-cli-wrapper}/bin/jira-cli";
+          };
+          jira-cli = {
+            type = "app";
+            program = "${jira-cli-wrapper}/bin/jira-cli";
+          };
         };
 
         # Development shell
