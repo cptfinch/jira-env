@@ -48,3 +48,7 @@ config.env
 *_secret*
 *_password*
 *_credential* 
+# Nix specific
+result
+result-*
+.direnv/
