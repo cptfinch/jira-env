@@ -66,7 +66,7 @@ def handle_search(jira, args):
     print()
     
     # Load queries from YAML file
-    queries_file = os.path.join('exports', 'queries', 'jira_queries.yaml')
+    queries_file = os.path.join('data', 'jira_queries.yaml')
     queries = load_queries(queries_file)
     
     # List available queries if requested
