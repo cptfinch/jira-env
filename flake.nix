@@ -85,11 +85,45 @@
         ]);
         
         # Create a wrapper script for the CLI
-        jira-cli-wrapper = pkgs.writeScriptBin "jira-cli" ''
-          #!${pkgs.bash}/bin/bash
-          export PYTHONPATH=${self}:$PYTHONPATH
-          exec ${pythonEnv}/bin/python ${self}/jira-cli.py "$@"
-        '';
+        jira-cli-wrapper = pkgs.stdenv.mkDerivation {
+          name = "jira-cli";
+          
+          # No build inputs needed, we're just creating a wrapper
+          buildInputs = [];
+          
+          # Use the current directory as the source
+          src = ./.;
+          
+          # Skip the configure and build phases
+          dontConfigure = true;
+          dontBuild = true;
+          
+          # In the install phase, create the necessary directory structure and files
+          installPhase = ''
+            # Create bin directory
+            mkdir -p $out/bin
+            
+            # Create config directory
+            mkdir -p $out/etc/jira-cli
+            
+            # Copy the queries file
+            cp $src/data/jira_queries.yaml $out/etc/jira-cli/
+            
+            # Create the wrapper script
+            cat > $out/bin/jira-cli << EOF
+            #!${pkgs.bash}/bin/bash
+            export PYTHONPATH=${self}:\$PYTHONPATH
+            
+            # Set the JIRA_QUERIES_PATH environment variable to point to the queries file
+            export JIRA_QUERIES_PATH=$out/etc/jira-cli/jira_queries.yaml
+            
+            exec ${pythonEnv}/bin/python ${self}/jira-cli.py "\$@"
+            EOF
+            
+            # Make the wrapper script executable
+            chmod +x $out/bin/jira-cli
+          '';
+        };
       in
       {
         # Expose the package
