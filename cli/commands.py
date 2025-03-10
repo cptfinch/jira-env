@@ -1,7 +1,7 @@
 """
 Command-line Interface for Jira Environment
 
-This module provides the command-line interface for interacting with the Jira API.
+This module provides the command-line interface for searching Jira issues.
 """
 
 import argparse
@@ -30,29 +30,18 @@ def load_queries(file_path):
 
 def parse_args():
     """Parse command line arguments"""
-    parser = argparse.ArgumentParser(description="Jira API Interface")
+    parser = argparse.ArgumentParser(description="Jira Search Interface")
     
-    # Main action argument
-    parser.add_argument("action", choices=[
-        "get-user", "get-issues", "get-issue", "create-issue", "update-issue",
-        "add-comment", "get-projects", "get-boards", "get-sprints", "transition-issue",
-        "search"  # Added search action
-    ], help="Action to perform")
-    
-    # Common arguments
-    parser.add_argument("--issue-key", help="Jira issue key (e.g., PROJ-123)")
-    parser.add_argument("--project", help="Jira project key")
-    parser.add_argument("--board-id", help="Jira board ID")
-    parser.add_argument("--format", choices=["json", "table", "summary"], default="summary", 
-                        help="Output format (default: summary)")
+    # Main action argument - only search is supported
+    parser.add_argument("action", choices=["search"], help="Action to perform")
     
     # Search-specific arguments
     parser.add_argument("--query", "-q", help="Name of the query to use from jira_queries.yaml")
     parser.add_argument("--jql", "-j", help="Custom JQL query to use instead of a named query")
+    parser.add_argument("--format", choices=["json", "table", "summary"], default="summary", 
+                        help="Output format (default: summary)")
     parser.add_argument("--limit", "-l", type=int, default=10, help="Maximum number of results to return")
     parser.add_argument("--list-queries", action="store_true", help="List available queries and exit")
-    
-    # Other arguments would be added here...
     
     return parser.parse_args()
 
@@ -168,40 +157,9 @@ def main():
     
     try:
         jira = JiraInterface()
-        
-        # Display connection information for all commands except search
-        # (search already displays this in handle_search)
-        if args.action != "search":
-            masked_token = jira.api_token[:4] + "..." if jira.api_token else "Not set"
-            print(f"Connected to: {jira.base_url}")
-            print(f"Using API token: {masked_token}")
-            print()
-        
-        # Handle different actions
-        if args.action == "get-user":
-            result = jira.get_current_user()
-        elif args.action == "get-issues":
-            result = jira.get_my_issues()
-        elif args.action == "search":
-            result = handle_search(jira, args)
-            if result:
-                print(format_search_results(result, args.format))
-            return  # Early return to avoid additional formatting
-        # Other actions would be handled here...
-        else:
-            print(f"Action {args.action} not implemented")
-            sys.exit(1)
-        
-        # Format and display results
-        if args.format == "json":
-            print(json.dumps(result, indent=2))
-        elif args.format == "table":
-            # Table formatting would be implemented here
-            print("Table formatting not implemented yet")
-        else:  # summary
-            # Summary formatting would be implemented here
-            print("Summary of results:")
-            print(f"Found {len(result) if isinstance(result, list) else 1} items")
+        result = handle_search(jira, args)
+        if result:
+            print(format_search_results(result, args.format))
     
     except Exception as e:
         print(f"Error: {str(e)}")

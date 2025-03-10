@@ -1,5 +1,5 @@
 {
-  description = "Jira Environment - A comprehensive interface to the Jira API";
+  description = "Jira CLI - A simple interface for searching Jira issues";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -18,7 +18,7 @@
           inherit system;
         };
         
-        # Define the Python package with all dependencies
+        # Define the Python package with core dependencies
         jira-env = pkgs.python3Packages.buildPythonPackage {
           pname = "jira-env";
           version = "0.1.0";
@@ -26,39 +26,16 @@
           src = ./.;
           
           propagatedBuildInputs = with pkgs.python3Packages; [
-            # Core requirements
+            # Core requirements only
             requests
             pyyaml
             python-dotenv
-            
-            # RAG requirements
-            openai
-            numpy
-            scikitlearn
-            faiss
-            langchain
-            
-            # Web requirements
-            flask
-            streamlit
-            plotly
-            pandas
-            
-            # Chat requirements
-            slackclient
-            botbuilder-core
-            discordpy
-            
-            # Interactive requirements
-            prompt-toolkit
-            rich
-            inquirer
           ];
           
           doCheck = false;  # Skip tests for now
           
           meta = with pkgs.lib; {
-            description = "A comprehensive interface to the Jira API";
+            description = "A simple interface for searching Jira issues";
             homepage = "https://github.com/cptfinch/jira-env";
             license = licenses.mit;
             maintainers = with maintainers; [ /* add yourself here */ ];
@@ -75,30 +52,21 @@
           
           # Development tools
           pytest
-          pytest-cov
           black
           flake8
           mypy
-          
-          # BDD testing
-          behave
         ]);
         
         # Create a wrapper script for the CLI
         jira-cli-wrapper = pkgs.stdenv.mkDerivation {
           name = "jira-cli";
           
-          # No build inputs needed, we're just creating a wrapper
           buildInputs = [];
-          
-          # Use the current directory as the source
           src = ./.;
           
-          # Skip the configure and build phases
           dontConfigure = true;
           dontBuild = true;
           
-          # In the install phase, create the necessary directory structure and files
           installPhase = ''
             # Create bin directory
             mkdir -p $out/bin
@@ -113,27 +81,21 @@
             cat > $out/bin/jira-cli << EOF
             #!${pkgs.bash}/bin/bash
             export PYTHONPATH=${self}:\$PYTHONPATH
-            
-            # Set the JIRA_QUERIES_PATH environment variable to point to the queries file
             export JIRA_QUERIES_PATH=$out/etc/jira-cli/jira_queries.yaml
-            
             exec ${pythonEnv}/bin/python ${self}/jira-cli.py "\$@"
             EOF
             
-            # Make the wrapper script executable
             chmod +x $out/bin/jira-cli
           '';
         };
       in
       {
-        # Expose the package
         packages = {
           default = jira-env;
           jira-env = jira-env;
           jira-cli = jira-cli-wrapper;
         };
 
-        # Add apps for nix run
         apps = {
           default = {
             type = "app";
@@ -145,39 +107,29 @@
           };
         };
 
-        # Development shell
         devShells.default = pkgs.mkShell {
           packages = [
             pythonEnv
-            # Development tools
             pkgs.python3Packages.pip
             pkgs.python3Packages.black
             pkgs.python3Packages.flake8
             pkgs.python3Packages.mypy
             pkgs.python3Packages.pytest
-            pkgs.python3Packages.pytest-cov
-            pkgs.python3Packages.behave
           ];
           
-          # Shell hook to display Python version and available packages
           shellHook = ''
-            echo "Jira Environment development shell"
+            echo "Jira CLI development shell"
             echo "Python version: $(python --version)"
             echo "Requests package: $(python -c 'import requests; print(f"requests {requests.__version__}")')"
             echo "PyYAML package: $(python -c 'import yaml; print(f"pyyaml {yaml.__version__}")')"
             echo "python-dotenv package: $(python -c 'import dotenv; print(f"python-dotenv {dotenv.__version__ if hasattr(dotenv, "__version__") else "installed"}")')"
             echo ""
             echo "Available commands:"
-            echo "  python cli.py --help - Run the command-line interface"
-            echo "  python -m exports.manager - Run the export manager"
-            echo ""
-            echo "Note: The web interface module requires the package to be installed"
-            echo "      as 'jira_env' to work properly. In development mode, you can"
-            echo "      directly run: python web/interface.py"
+            echo "  jira-cli search --help - Show search command help"
+            echo "  jira-cli search --list-queries - List available queries"
             echo ""
             echo "For development:"
             echo "  All dependencies are already available in this nix shell environment."
-            echo "  No need to run pip install - use 'nix develop' to manage dependencies."
             echo "  To add new dependencies, update the flake.nix file and run 'nix develop' again."
           '';
         };
@@ -188,7 +140,7 @@
             cfg = config.programs.jira-env;
           in {
             options.programs.jira-env = {
-              enable = lib.mkEnableOption "Jira Environment";
+              enable = lib.mkEnableOption "Jira CLI";
               
               baseUrl = lib.mkOption {
                 type = lib.types.str;
@@ -206,13 +158,6 @@
                 type = lib.types.str;
                 default = "";
                 description = "Jira API token (not recommended, use environment variable instead)";
-              };
-              
-              enableExtensions = lib.mkOption {
-                type = lib.types.listOf (lib.types.enum ["rag" "web" "chat" "interactive" "all"]);
-                default = [];
-                description = "List of extensions to enable";
-                example = ["web" "interactive"];
               };
             };
             
